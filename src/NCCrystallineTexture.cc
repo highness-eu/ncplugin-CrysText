@@ -15,6 +15,17 @@ namespace {
   double sato_mmd_podf( const NCrystal::Vector& preferred_orientation, NCrystal::Vector vec_hkl,
                         double d_hkl, double R, double wl )
   {
+      nc_assert_always( !std::isnan( d_hkl ) );
+      nc_assert_always( !std::isnan( R ) );
+      nc_assert_always( !std::isnan( wl ) );
+      nc_assert_always( !std::isnan( vec_hkl[0] ) );
+      nc_assert_always( !std::isnan( vec_hkl[1] ) );
+      nc_assert_always( !std::isnan( vec_hkl[2] ) );
+      nc_assert_always( !std::isnan( preferred_orientation[1] ) );
+      nc_assert_always( !std::isnan( preferred_orientation[2] ) );
+      nc_assert_always( !std::isnan( preferred_orientation[2] ) );
+
+
     //Calculation of the modified March-Dollase preferred orientation distribution function
     //reported in the paper of Sato et al. 2011
     //P_hkl(lambda, d_hkl, hkl, R)
@@ -25,21 +36,30 @@ namespace {
     //wl : wavelength, Aa
     //Note: P_hkl is symmetric in (h,k,l), i.e., P_hkl=P_-h-k-l
     double P_hkl = 1.;
-    unsigned int num_phis = 1000; //can be changed later
+    const unsigned int num_phis = 1000; //can be changed later
 
     double sin_theta = 0.5 * wl / d_hkl; //2*d_hkl*sin(theta_hkl)=lambda
     if ( sin_theta >= -1. && sin_theta <= 1. ) {
+      nc_assert_always( !std::isnan( 1 - NC::ncsquare(sin_theta) ) );
       double cos_theta = std::sqrt( 1 - NC::ncsquare(sin_theta) );
+      nc_assert_always( !std::isnan( cos_theta ) );
 
       double cos_A = preferred_orientation.dot(vec_hkl) / ( std::sqrt( preferred_orientation.mag2() * vec_hkl.mag2() ) );
       double sin_A = std::sqrt( 1 - NC::ncsquare(cos_A) );
+      nc_assert_always( !std::isnan( cos_A ) );
+      nc_assert_always( !std::isnan( sin_A ) );
 
       //trapezoidal integration
       P_hkl = 0.;
       for ( auto phi : NC::linspace( 0, NC::k2Pi * (1-1./num_phis), num_phis ) ) {
         double B = cos_A * sin_theta + sin_A * cos_theta * std::sin(phi); //integrand, to be optimised
+        nc_assert_always( !std::isnan( B ) );
+        nc_assert_always( !std::isnan( std::sin(phi) ) );
+
         //since P_hkl(0)=P_hkl(2pi)
         P_hkl += std::pow( (NC::ncsquare(R * B) + (1 - NC::ncsquare(B)) / R), -1.5 ) / (num_phis+1);
+        nc_assert_always( !std::isnan( P_hkl ) );
+
       }
       //double epsilon = 1.E-9; //precision of the integration bounds
       //double Rm1R = NC::ncsquare(R) - 1. / R;
