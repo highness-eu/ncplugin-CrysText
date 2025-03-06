@@ -9,52 +9,55 @@
 #include "NCrystal/internal/extd_utils/NCOrientUtils.hh"
 #include "NCrystal/internal/extd_utils/NCPlaneProvider.hh"
 
-//preferred orientation distribution function (Sato 2011)
-double sato_mmd_podf( const NCrystal::Vector& preferred_orientation, NCrystal::Vector vec_hkl,
-                      double d_hkl, double R, double wl )
-{
-  //Calculation of the modified March-Dollase preferred orientation distribution function
-  //reported in the paper of Sato et al. 2011
-  //P_hkl(lambda, d_hkl, hkl, R)
-  //preferred_orientation : preferred orientation of texture
-  //vec_hkl : (h,k,l)
-  //d_hkl : dspacing for the hkl plan
-  //R : coefficient in the modified March-Dollase texture model
-  //wl : wavelength, Aa
-  //Note: P_hkl is symmetric in (h,k,l), i.e., P_hkl=P_-h-k-l
-  double P_hkl = 1.;
-  unsigned int num_phis = 1000; //can be changed later
+namespace {
 
-  double sin_theta = 0.5 * wl / d_hkl; //2*d_hkl*sin(theta_hkl)=lambda
-  if ( sin_theta >= -1. && sin_theta <= 1. ) {
-    double cos_theta = std::sqrt( 1 - NC::ncsquare(sin_theta) );
+  //preferred orientation distribution function (Sato 2011)
+  double sato_mmd_podf( const NCrystal::Vector& preferred_orientation, NCrystal::Vector vec_hkl,
+                        double d_hkl, double R, double wl )
+  {
+    //Calculation of the modified March-Dollase preferred orientation distribution function
+    //reported in the paper of Sato et al. 2011
+    //P_hkl(lambda, d_hkl, hkl, R)
+    //preferred_orientation : preferred orientation of texture
+    //vec_hkl : (h,k,l)
+    //d_hkl : dspacing for the hkl plan
+    //R : coefficient in the modified March-Dollase texture model
+    //wl : wavelength, Aa
+    //Note: P_hkl is symmetric in (h,k,l), i.e., P_hkl=P_-h-k-l
+    double P_hkl = 1.;
+    unsigned int num_phis = 1000; //can be changed later
 
-    double cos_A = preferred_orientation.dot(vec_hkl) / ( std::sqrt( preferred_orientation.mag2() * vec_hkl.mag2() ) );
-    double sin_A = std::sqrt( 1 - NC::ncsquare(cos_A) );
+    double sin_theta = 0.5 * wl / d_hkl; //2*d_hkl*sin(theta_hkl)=lambda
+    if ( sin_theta >= -1. && sin_theta <= 1. ) {
+      double cos_theta = std::sqrt( 1 - NC::ncsquare(sin_theta) );
 
-    //trapezoidal integration
-    P_hkl = 0.;
-    for ( auto phi : NC::linspace( 0, NC::k2Pi * (1-1./num_phis), num_phis ) ) {
-      double B = cos_A * sin_theta + sin_A * cos_theta * std::sin(phi); //integrand, to be optimised
-      //since P_hkl(0)=P_hkl(2pi)
-      P_hkl += std::pow( (NC::ncsquare(R * B) + (1 - NC::ncsquare(B)) / R), -1.5 ) / (num_phis+1);
+      double cos_A = preferred_orientation.dot(vec_hkl) / ( std::sqrt( preferred_orientation.mag2() * vec_hkl.mag2() ) );
+      double sin_A = std::sqrt( 1 - NC::ncsquare(cos_A) );
+
+      //trapezoidal integration
+      P_hkl = 0.;
+      for ( auto phi : NC::linspace( 0, NC::k2Pi * (1-1./num_phis), num_phis ) ) {
+        double B = cos_A * sin_theta + sin_A * cos_theta * std::sin(phi); //integrand, to be optimised
+        //since P_hkl(0)=P_hkl(2pi)
+        P_hkl += std::pow( (NC::ncsquare(R * B) + (1 - NC::ncsquare(B)) / R), -1.5 ) / (num_phis+1);
+      }
+      //double epsilon = 1.E-9; //precision of the integration bounds
+      //double Rm1R = NC::ncsquare(R) - 1. / R;
+      //double a = Rm1R * NC::ncsquare(sin_A * cos_theta);
+      //double b = -2 * Rm1R * sin_A * cos_A * sin_theta * cos_theta;
+      //double c = Rm1R * NC::ncsquare(cos_A * sin_theta) + 1. / R;
+      //for ( auto x : NC::linspace( -1.+epsilon, 1.-epsilon, num_phis ) ) {
+      //  double x1mx = x * std::sqrt(1 - NC::ncsquare(x));
+      //  P_hkl += 1. / std::sqrt( std::pow( 4 * a * NC::ncsquare(x1mx) + 2 * b * x1mx + c, 3 ) * (1 - NC::ncsquare(x)) );
+      //}
+      //double x1 = -1.+epsilon * std::sqrt(1 - NC::ncsquare(-1.+epsilon));
+      //P_hkl -= 0.5 / std::sqrt( std::pow( 4 * a * NC::ncsquare(x1) + 2 * b * x1 + c, 3 ) * (1 - NC::ncsquare(-1.+epsilon)) );
+      //P_hkl -= 0.5 / std::sqrt( std::pow( 4 * a * NC::ncsquare(x1) - 2 * b * x1 + c, 3 ) * (1 - NC::ncsquare(-1.+epsilon)) );
+      //P_hkl /= NC::kPi * num_phis;
     }
-    //double epsilon = 1.E-9; //precision of the integration bounds
-    //double Rm1R = NC::ncsquare(R) - 1. / R;
-    //double a = Rm1R * NC::ncsquare(sin_A * cos_theta);
-    //double b = -2 * Rm1R * sin_A * cos_A * sin_theta * cos_theta;
-    //double c = Rm1R * NC::ncsquare(cos_A * sin_theta) + 1. / R;
-    //for ( auto x : NC::linspace( -1.+epsilon, 1.-epsilon, num_phis ) ) {
-    //  double x1mx = x * std::sqrt(1 - NC::ncsquare(x));
-    //  P_hkl += 1. / std::sqrt( std::pow( 4 * a * NC::ncsquare(x1mx) + 2 * b * x1mx + c, 3 ) * (1 - NC::ncsquare(x)) );
-    //}
-    //double x1 = -1.+epsilon * std::sqrt(1 - NC::ncsquare(-1.+epsilon));
-    //P_hkl -= 0.5 / std::sqrt( std::pow( 4 * a * NC::ncsquare(x1) + 2 * b * x1 + c, 3 ) * (1 - NC::ncsquare(-1.+epsilon)) );
-    //P_hkl -= 0.5 / std::sqrt( std::pow( 4 * a * NC::ncsquare(x1) - 2 * b * x1 + c, 3 ) * (1 - NC::ncsquare(-1.+epsilon)) );
-    //P_hkl /= NC::kPi * num_phis;
-  }
 
-  return P_hkl;
+    return P_hkl;
+  }
 }
 
 bool NCP::CrystallineTexture::isApplicable( const NC::Info& info )
