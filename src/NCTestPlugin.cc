@@ -30,28 +30,37 @@ void NCP::customPluginTest()
   //(which is what the nc_assert_always function does below, but feel free to
   //simply throw an exception directly).
 
-  NCRYSTAL_MSG("Testing plugin "<<pluginName());
+  NCPLUGIN_MSG("Testing plugin "<<pluginName());
 
   nc_assert_always( pluginName() == "CrysText" );//sanity check
 
   nc_assert_always( NC::FactImpl::hasScatterFactory("CrysTextFactory" ) );
-  NCRYSTAL_MSG("Verified presence of scatter factory named 'CrysTextFactory'");
+  NCPLUGIN_MSG("Verified presence of scatter factory named 'CrysTextFactory'");
 
   {
-    NCRYSTAL_MSG("Loading 'plugins::CrysText/Al_sg225.ncmat'");
+    NCPLUGIN_MSG("Loading 'plugins::CrysText/Al_sg225.ncmat'");
     auto info = NC::createInfo("plugins::CrysText/Al_sg225.ncmat");
-    NCRYSTAL_MSG("  -> info object:");
+    NCPLUGIN_MSG("  -> info object:");
     NC::dump(info);
-    auto sc = NC::createScatter("plugins::CrysText/Al_sg225.ncmat"
-                                ";dir1=@crys_hkl:0,1,0@lab:0,1,0"
-                                ";dir2=@crys_hkl:1,0,0@lab:1,0,0"
-                                ";mos=0.1deg"
-                                );
-    NCRYSTAL_MSG("  -> scatter process:");
-    NCRYSTAL_RAWOUT(sc.underlying().jsonDescription())
+    auto sc = NC::createScatter("plugins::CrysText/Al_sg225.ncmat");
+    NCPLUGIN_MSG("  -> scatter process:");
+    NCRYSTAL_RAWOUT(sc.underlying().jsonDescription());
+  }
+  {
+    //Check for NaNs (https://github.com/mctools/ncrystal/issues/215):
+    NCPLUGIN_MSG("Checking NaNs in 'plugins::CrysText/Al_sg225.ncmat' xsects" );
+    auto sc = NC::createScatter("plugins::CrysText/Al_sg225.ncmat");
+    for ( unsigned i = 0; i < 60; ++i ) {
+      auto wl = NC::NeutronWavelength( i * 0.1 );
+      auto xs  = sc.crossSectionIsotropic(wl);
+      NCPLUGIN_MSG( "  xs @ "<<wl<<" : "<<xs);
+      nc_assert_always( !std::isnan(xs.dbl()) );
+      nc_assert_always( !std::isinf(xs.dbl()) );
+      nc_assert_always( xs.dbl() >= 0.0 && xs.dbl() <= 10.0 );
+    }
   }
 
   //TODO: More comprehensive sanity checks here!!!!
 
-  NCRYSTAL_MSG("All tests of plugin "<<pluginName()<<" were successful!");
+  NCPLUGIN_MSG("All tests of plugin "<<pluginName()<<" were successful!");
 }
