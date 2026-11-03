@@ -170,7 +170,13 @@ NCP::CrystallineTexture::CrystallineTexture( const NCrystal::Vector& preferred_o
                                                        struct_info.alpha*NC::kDeg, struct_info.beta*NC::kDeg, struct_info.gamma*NC::kDeg );
 
 
+#if NCRYSTAL_VERSION >= 4004007
+  //Average number of atoms per unit cell (lower than the number of atom
+  //positions in case of partial occupancies):
+  double V0numAtom = struct_info.n_atoms_average * struct_info.volume;
+#else
   double V0numAtom = struct_info.n_atoms * struct_info.volume;
+#endif
   const double xsectfact = 0.5 / V0numAtom;
 
   plane_provider->prepareLoop();
